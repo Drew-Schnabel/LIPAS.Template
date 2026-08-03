@@ -1,0 +1,34 @@
+# Maintains a draft GitHub Release whose body is auto-categorized from the
+# merged PR titles since the last published release. Config lives at
+# .github/release-drafter.yml. The draft stays unpublished until a release
+# flow promotes it, so this is safe to run on every push to a release line.
+
+name: release-drafter
+
+on:
+  push:
+    branches:
+      - master
+      - 'release-v**'
+  pull_request_target:
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled]
+
+permissions: {}
+
+concurrency:
+  group: release-drafter-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  draft:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Update draft release
+        uses: release-drafter/release-drafter@da8b9b696abad2ad997580e49f4c1c2e03cc2bd2  # v7.3.0
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

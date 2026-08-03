@@ -1,0 +1,65 @@
+# Backport bot. Triggered when a merged PR carries a label of the form
+# `backport <branch>` (e.g. `backport release-v2.1.0`, `backport pre-release-v2.1.0`).
+# Opens a cherry-pick PR against the target branch automatically.
+#
+# Required label format:
+#   backport release-v2.1.0
+#   backport pre-release-v2.0.5
+#
+# Conflict handling: if the cherry-pick conflicts, the bot opens the PR
+# with conflict markers and labels it `backport-conflict` for manual
+# resolution.
+
+name: backport
+
+on:
+  pull_request_target:
+    types:
+      - closed
+      - labeled
+
+permissions: {}
+
+concurrency:
+  group: backport-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  backport:
+    name: Backport merged PR
+    if: |
+      github.event.pull_request.merged == true &&
+      (
+        (github.event.action == 'closed') ||
+        (github.event.action == 'labeled' && startsWith(github.event.label.name, 'backport '))
+      )
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Backport must push branches and open PRs. CONTENTS_TOKEN bypasses
+          # branch protection rules on the target branches; falls back to the
+          # ephemeral GITHUB_TOKEN if not configured.
+          token: ${{ secrets.CONTENTS_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Run backport
+        uses: korthout/backport-action@66065406958f46e82238fd59546f5a99e69e22aa  # v4.5.2
+        with:
+          github_token: ${{ secrets.CONTENTS_TOKEN || secrets.GITHUB_TOKEN }}
+          # Match labels like `backport release-v2.1.0`.
+          label_pattern: '^backport (?<target>(?:release|pre-release)-v[0-9]+\.[0-9]+\.[0-9]+)$'
+          pull_title: '[Backport ${target_branch}] ${pull_title}'
+          pull_description: |
+            Automated backport of #${pull_number} to `${target_branch}`.
+
+            ---
+            Triggered by label on the original PR.
+            If this backport contains conflicts the bot will mark the PR `backport-conflict` — resolve and push to this branch.
+          merge_commits: 'skip'
+          copy_assignees: true
+          copy_labels_pattern: '^(bug|feature|migration|breaking)$'

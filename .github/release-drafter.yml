@@ -1,0 +1,109 @@
+# Release-drafter config. Maintains a draft GitHub Release per next-version
+# tag, populated from merged-PR titles since the last published release.
+#
+# The draft is not published on its own. A repo's release flow may read the
+# draft for the matching tag and fold its body into the real release notes.
+
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+# PR-title prefix → category in the changelog.
+# Depends on conventional-commit prefixes ("feat:", "fix:", "chore:", ...) on
+# PR titles; the autolabeler below derives the labels from them.
+categories:
+  - title: 'Breaking changes'
+    labels:
+      - 'breaking'
+      - 'major'
+  - title: 'Features'
+    labels:
+      - 'feature'
+      - 'feat'
+      - 'enhancement'
+  - title: 'Bug fixes'
+    labels:
+      - 'bug'
+      - 'fix'
+  - title: 'Database migrations'
+    labels:
+      - 'migration'
+      - 'database'
+      - 'schema'
+  - title: 'CI / build'
+    labels:
+      - 'ci'
+      - 'build'
+      - 'chore'
+  - title: 'Documentation'
+    labels:
+      - 'docs'
+      - 'documentation'
+  - title: 'Dependencies'
+    labels:
+      - 'dependencies'
+
+# Auto-label PRs based on title prefix. Drives the categories above without
+# requiring every PR author to apply labels by hand.
+autolabeler:
+  - label: 'breaking'
+    title:
+      - '/.*!:.*/'
+      - '/.*BREAKING CHANGE.*/i'
+  - label: 'feature'
+    title:
+      - '/^feat(\(.*\))?:/i'
+  - label: 'bug'
+    title:
+      - '/^fix(\(.*\))?:/i'
+  - label: 'ci'
+    title:
+      - '/^ci(\(.*\))?:/i'
+      - '/^build(\(.*\))?:/i'
+  - label: 'chore'
+    title:
+      - '/^chore(\(.*\))?:/i'
+  - label: 'docs'
+    title:
+      - '/^docs?(\(.*\))?:/i'
+  - label: 'migration'
+    title:
+      - '/^migration(\(.*\))?:/i'
+      - '/migration/i'
+
+# Resolve the next version from the labels applied to merged PRs since
+# the last published release.
+version-resolver:
+  major:
+    labels:
+      - 'breaking'
+      - 'major'
+  minor:
+    labels:
+      - 'feature'
+      - 'feat'
+      - 'minor'
+  patch:
+    labels:
+      - 'bug'
+      - 'fix'
+      - 'chore'
+      - 'ci'
+      - 'docs'
+      - 'migration'
+      - 'dependencies'
+  default: patch
+
+template: |
+  ## What's changed in $RESOLVED_VERSION
+
+  $CHANGES
+
+  **Full diff**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
+change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
+change-title-escapes: '\<*_&'
+no-changes-template: '- _No PR changes since the last release._'
+
+exclude-labels:
+  - 'skip-changelog'
+  - 'dependabot-internal'

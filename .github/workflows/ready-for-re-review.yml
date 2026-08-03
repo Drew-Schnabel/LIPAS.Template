@@ -1,0 +1,78 @@
+name: Ready For Re-review
+
+# When new commits are pushed to a PR that currently has the
+# "Changes Requested By Reviewer" label (i.e. the bot addressed feedback):
+#   - Remove that label
+#   - Add "needs-review"
+#   - Re-request the original reviewer(s) and reassign the author
+# This is the counterpart to changes-requested.yml.
+
+on:
+  pull_request_target:
+    types: [synchronize]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  re-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Flip back to needs-review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = pr.number;
+            const CHANGES_LABEL = 'Changes Requested By Reviewer';
+
+            const labels = (pr.labels || []).map(l => l.name);
+            if (!labels.includes(CHANGES_LABEL)) {
+              core.info('PR does not have the changes-requested label; skipping.');
+              return;
+            }
+
+            // Remove the changes-requested label
+            try {
+              await github.rest.issues.removeLabel({
+                owner, repo, issue_number: prNumber, name: CHANGES_LABEL,
+              });
+            } catch (e) {
+              core.info(`Could not remove label: ${e.message}`);
+            }
+
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: prNumber, labels: ['needs-review'],
+            });
+
+            // Find reviewers who previously requested changes and re-request them.
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner, repo, pull_number: prNumber, per_page: 100,
+            });
+            const changeRequesters = [...new Set(
+              reviews
+                .filter(r => r.state === 'CHANGES_REQUESTED' && r.user)
+                .map(r => r.user.login)
+            )].filter(login => login !== pr.user.login);
+
+            if (changeRequesters.length > 0) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner, repo, pull_number: prNumber, reviewers: changeRequesters,
+                });
+              } catch (e) {
+                core.info(`Could not re-request reviewers: ${e.message}`);
+              }
+            }
+
+            // Reassign the author so it lands back in their court too.
+            try {
+              await github.rest.issues.addAssignees({
+                owner, repo, issue_number: prNumber, assignees: [pr.user.login],
+              });
+            } catch (e) {
+              core.info(`Could not assign author: ${e.message}`);
+            }

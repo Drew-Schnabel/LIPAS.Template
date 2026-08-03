@@ -1,0 +1,63 @@
+
+name: Handle Changes Requested
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  changes-requested:
+    if: github.event.review.state == 'changes_requested'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process changes requested
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const author = context.payload.pull_request.user.login;
+            const reviewer = context.payload.review.user.login;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // 1. Assign the PR to the creator
+            await github.rest.issues.addAssignees({
+              owner, repo, issue_number: prNumber,
+              assignees: [author],
+            });
+
+            // 2. Add the label
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: prNumber,
+              labels: ['Changes Requested By Reviewer'],
+            });
+
+            // 3a. Remove the reviewer as a requested reviewer (if requested)
+            const requested = context.payload.pull_request.requested_reviewers || [];
+            if (requested.some(r => r.login === reviewer)) {
+              try {
+                await github.rest.pulls.removeRequestedReviewers({
+                  owner, repo, pull_number: prNumber,
+                  reviewers: [reviewer],
+                });
+              } catch (e) {
+                core.info(`Could not remove requested reviewer ${reviewer}: ${e.message}`);
+              }
+            }
+
+            // 3b. Remove the reviewer as an assignee (if assigned)
+            const assignees = context.payload.pull_request.assignees || [];
+            if (assignees.some(a => a.login === reviewer)) {
+              try {
+                await github.rest.issues.removeAssignees({
+                  owner, repo, issue_number: prNumber,
+                  assignees: [reviewer],
+                });
+              } catch (e) {
+                core.info(`Could not unassign ${reviewer}: ${e.message}`);
+              }
+            }

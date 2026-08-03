@@ -1,0 +1,63 @@
+name: Auto-merge Approved PRs
+
+# When a PR is approved and carries the "automerge" label, enable
+# GitHub's native auto-merge so it merges once all required checks pass.
+# Requires: repo setting "Allow auto-merge" enabled, and branch protection
+# with required status checks configured.
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = pr.number;
+            const AUTOMERGE_LABEL = 'automerge';
+
+            const labels = (pr.labels || []).map(l => l.name);
+            if (!labels.includes(AUTOMERGE_LABEL)) {
+              core.info('No automerge label; skipping.');
+              return;
+            }
+
+            // Confirm the PR currently has an approving review.
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner, repo, pull_number: prNumber, per_page: 100,
+            });
+            const latestByUser = {};
+            for (const r of reviews) {
+              if (r.user) latestByUser[r.user.login] = r.state;
+            }
+            const approved = Object.values(latestByUser).includes('APPROVED');
+            if (!approved) {
+              core.info('No approving review yet; skipping.');
+              return;
+            }
+
+            // Enable auto-merge via GraphQL (REST has no direct endpoint).
+            const query = `mutation($id: ID!) {
+              enablePullRequestAutoMerge(input: {pullRequestId: $id, mergeMethod: SQUASH}) {
+                pullRequest { number }
+              }
+            }`;
+            try {
+              await github.graphql(query, { id: pr.node_id });
+              core.info('Auto-merge enabled.');
+            } catch (e) {
+              core.info(`Could not enable auto-merge: ${e.message}`);
+            }

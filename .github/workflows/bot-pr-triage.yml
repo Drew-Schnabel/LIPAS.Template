@@ -1,0 +1,76 @@
+name: Bot PR Triage
+
+# When a bot (e.g. Claude Code) opens a PR:
+#   - Label it "ai-generated"
+#   - Add a "needs-review" label and request a default human reviewer
+#   - Post a review checklist comment
+# Edit BOT_LOGINS and DEFAULT_REVIEWER below to match your setup.
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+env:
+  # Comma-separated list of bot account logins. User type "Bot" is also auto-detected.
+  BOT_LOGINS: "claude,claude[bot],github-actions[bot],app/claude"
+  # GitHub username to request review from. Leave empty to skip.
+  DEFAULT_REVIEWER: ""
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Triage bot PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = pr.number;
+
+            const botLogins = (process.env.BOT_LOGINS || "")
+              .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+            const isBot = pr.user.type === 'Bot' ||
+              botLogins.includes(pr.user.login.toLowerCase());
+
+            if (!isBot) {
+              core.info(`PR author ${pr.user.login} is not a configured bot; skipping.`);
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: prNumber,
+              labels: ['ai-generated', 'needs-review'],
+            });
+
+            const reviewer = (process.env.DEFAULT_REVIEWER || "").trim();
+            if (reviewer && reviewer !== pr.user.login) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner, repo, pull_number: prNumber,
+                  reviewers: [reviewer],
+                });
+              } catch (e) {
+                core.info(`Could not request reviewer ${reviewer}: ${e.message}`);
+              }
+            }
+
+            const body = [
+              '### 🤖 AI-generated PR checklist',
+              '',
+              '- [ ] Change matches the linked issue / intended scope (no scope creep)',
+              '- [ ] Tests added or updated for the new behavior',
+              '- [ ] No secrets, tokens, or credentials introduced',
+              '- [ ] No unexpected dependency or lockfile changes',
+              '- [ ] No edits to CI / workflow / auth files without justification',
+              '- [ ] Error handling and edge cases considered',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: prNumber, body,
+            });
