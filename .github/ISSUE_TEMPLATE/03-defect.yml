@@ -1,0 +1,61 @@
+name: Defect
+description: Existing behaviour is wrong.
+title: "Defect: "
+labels: ["Defect"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What is wrong
+      description: One sentence stating the defect, not the symptom trail.
+      placeholder: The ledger verifier anchors its read-back window on CreatedUtc, so a retried post is never re-read.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+      value: |
+        **Expected:**
+
+        **Actual:**
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Concrete inputs and state. A failing test name is the strongest form of this.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, stack traces, or query output. Redact credentials and member data.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / branch
+      placeholder: v3.2.3, or pre-release-v3.3.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - Money or member data is wrong
+        - Work is blocked, no data at risk
+        - Degraded but has a workaround
+        - Cosmetic or internal only
+    validations:
+      required: true
