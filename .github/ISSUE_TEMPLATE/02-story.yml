@@ -1,0 +1,56 @@
+name: Story
+description: A single shippable piece of work.
+title: "Story: "
+labels: ["Story"]
+body:
+  - type: textarea
+    id: intent
+    attributes:
+      label: Intent
+      description: What should be possible after this ships, and for whom.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Testable conditions. If a criterion cannot fail, it is not a criterion.
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: input
+    id: parent
+    attributes:
+      label: Parent epic
+      placeholder: "#869"
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Affected projects
+      description: Which assemblies or layers this touches.
+    validations:
+      required: false
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Explicitly out of scope
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: ships-with
+    attributes:
+      label: Ships with the change
+      description: Documentation ships in the same PR as the code — a doc gap blocks the merge.
+      options:
+        - label: Tests covering the acceptance criteria
+        - label: Docs updated in the same PR (or explicitly not applicable)
+        - label: An ADR, if this sets a durable decision

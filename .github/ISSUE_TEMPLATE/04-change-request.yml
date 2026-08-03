@@ -1,0 +1,55 @@
+name: Change Request
+description: A preexisting feature that works as designed, but the design should change.
+title: "CR: "
+labels: ["Change Request"]
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behaviour
+      description: What it does today, stated neutrally. This is not a defect report.
+    validations:
+      required: true
+
+  - type: textarea
+    id: requested
+    attributes:
+      label: Requested behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale
+      description: What the current design costs, and what the change buys.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: Compatibility
+      description: Effect on the published surface consumers bind to.
+      options:
+        - Additive — no consumer action
+        - Behavioural — same signatures, different outcome
+        - Breaking — consumers must change
+    validations:
+      required: true
+
+  - type: textarea
+    id: migration
+    attributes:
+      label: Consumer migration
+      description: Required if breaking. What downstream repos must do, and in what order.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: ships-with
+    attributes:
+      label: Ships with the change
+      options:
+        - label: Docs describing the old behaviour found and corrected
+        - label: An ADR, if this sets a durable decision

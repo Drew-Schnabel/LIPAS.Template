@@ -1,0 +1,48 @@
+name: Epic
+description: A parent collection of work, delivered by child stories.
+title: "Epic: "
+labels: ["Epic"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What is true when this epic is done? State the end condition, not the activity.
+      placeholder: WriteGuard is a self-contained module with no vendor types crossing into the use-case layer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why now
+      description: What breaks, costs, or stays blocked if this is not done.
+    validations:
+      required: true
+
+  - type: textarea
+    id: children
+    attributes:
+      label: Child stories
+      description: Link stories as they are cut. Each should be independently shippable.
+      value: |
+        - [ ] #
+    validations:
+      required: false
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Explicitly out of scope
+      description: What a reader might reasonably assume is included but is not.
+    validations:
+      required: true
+
+  - type: input
+    id: adr
+    attributes:
+      label: ADR
+      description: The decision record, if this epic rests on one.
+      placeholder: docs/adr/ADR-0013-ports-and-adapters.md
+    validations:
+      required: false
