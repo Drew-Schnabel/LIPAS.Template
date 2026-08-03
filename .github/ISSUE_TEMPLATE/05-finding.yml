@@ -1,0 +1,72 @@
+name: Finding
+description: Something surfaced during work that needs a decision before it can be actioned.
+title: "Decide: "
+labels: ["Finding"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when work uncovered something that is not yet a story or a defect because
+        the correct answer is not established. A finding is the record — a conclusion reached
+        only in chat has not been recorded.
+
+  - type: textarea
+    id: finding
+    attributes:
+      label: What was found
+      description: The observation, stated so someone who was not there can evaluate it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: where
+    attributes:
+      label: Where
+      description: Files, issues, or PRs this came out of.
+      placeholder: "Surfaced in #829; LIPAS.SDK.Persistence/Migrations/PayFlow"
+    validations:
+      required: false
+
+  - type: textarea
+    id: question
+    attributes:
+      label: The open question
+      description: Phrase it so it can be answered, not discussed indefinitely.
+      placeholder: Does #537 close on in-suite integration tests, or require the separate IntegrationTests project it specifies?
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Options considered
+      description: Each with its consequence. Say which you lean toward and why.
+      value: |
+        **A.**
+        _Consequence:_
+
+        **B.**
+        _Consequence:_
+
+        **Leaning:**
+    validations:
+      required: true
+
+  - type: input
+    id: owner
+    attributes:
+      label: Who decides
+      description: Assign them. If this needs subject-matter input, add the `SME Input Needed` label.
+      placeholder: "@Drew-Schnabel"
+    validations:
+      required: false
+
+  - type: textarea
+    id: blocked
+    attributes:
+      label: Blocked by this
+      description: Work that cannot proceed until this is answered.
+      value: |
+        - [ ] #
+    validations:
+      required: false

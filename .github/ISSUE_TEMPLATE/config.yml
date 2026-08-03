@@ -1,0 +1,4 @@
+# Everything lands in one of the five types. `Finding` is deliberately broad enough
+# for anything that does not yet fit the others — flip this to true if you want an
+# unstructured escape hatch as well.
+blank_issues_enabled: false
