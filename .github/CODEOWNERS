@@ -1,0 +1,13 @@
+# Code owners. GitHub requests review from the owner automatically when a PR
+# touches a path they own, and branch protection can require their approval.
+#
+# The file must be named CODEOWNERS with no extension and live in .github/,
+# docs/, or the repo root — anywhere else and GitHub ignores it silently.
+#
+# Rules are last-match-wins: a later line fully overrides an earlier one for the
+# same path. Add narrower rules *below* the catch-all as reviewers are added.
+#
+# Note: GitHub never requests review from a PR's own author, so the catch-all
+# does its real work on PRs opened by automation.
+
+*   @Drew-Schnabel
