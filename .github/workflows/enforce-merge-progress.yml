@@ -1,0 +1,138 @@
+# Enforces feature/* -> pre-release-v* -> release-v* -> master.
+#
+# Shipped primed but inert: a repo generated from this template has no release
+# lines yet, so gating the first feature-to-master PR would block bootstrapping.
+# Enable with `gh variable set ENFORCE_MERGE_FLOW --body true` once the branch
+# flow is actually in use.
+
+name: Enforce Merge Flow
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - pre-release-v*
+      - release-v*
+      - master
+
+permissions:
+  pull-requests: write
+
+jobs:
+  validate-source-branch:
+    name: Validate PR Source Branch
+    # Opt-in. Unset or anything other than 'true' leaves the gate dormant.
+    if: vars.ENFORCE_MERGE_FLOW == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check merge flow rules
+        id: flow_check
+        shell: bash
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          echo "Target branch : $BASE"
+          echo "Source branch : $HEAD"
+
+          VIOLATION=""
+
+          case "$BASE" in
+
+            pre-release-v*)
+              # Any feature branch is fine — block master, release-v*, and other pre-release-v*
+              if [[ "$HEAD" == "master" || "$HEAD" == release-v* || "$HEAD" == pre-release-v* ]]; then
+                VIOLATION="❌ **Merge flow violation:** \`$HEAD\` cannot merge into \`$BASE\`.\n\n**Allowed sources:** feature branches only (e.g. \`feature/*\`, \`fix/*\`)."
+              fi
+              ;;
+
+            release-v*)
+              # Any pre-release-v* branch is allowed into release-v*. The pre-release lineage
+              # has its own version cadence (e.g. pre-release-v.2.0.0 → release-v1.9.0 is a
+              # valid cut). The check that matters here is "must come from a pre-release
+              # branch", not "must have a matching version suffix".
+              if [[ "$HEAD" != pre-release-v* ]]; then
+                VIOLATION="❌ **Merge flow violation:** \`$HEAD\` cannot merge into \`$BASE\`.\n\n**Allowed sources:** \`pre-release-v*\` branches only."
+              fi
+              ;;
+
+            master)
+              # Any release-v* branch is allowed into master — but nothing else
+              if [[ "$HEAD" != release-v* ]]; then
+                VIOLATION="❌ **Merge flow violation:** \`$HEAD\` cannot merge into \`master\`.\n\n**Allowed sources:** \`release-v*\` branches only."
+              fi
+              ;;
+
+          esac
+
+          if [[ -n "$VIOLATION" ]]; then
+            echo "violation<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$VIOLATION" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "::error::Merge flow violation detected — see PR for details."
+            exit 1
+          fi
+
+          echo "violation=" >> $GITHUB_OUTPUT
+          echo "✅ Merge flow validated: '$HEAD' → '$BASE' is permitted."
+
+      - name: Dismiss PR and post violation comment
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          # Passed via env, NOT interpolated into the script: the violation text contains backticks
+          # (markdown code spans), which would terminate a JS template literal and crash the script
+          # with a SyntaxError — dismissing the PR without ever posting the violation comment.
+          VIOLATION: ${{ steps.flow_check.outputs.violation }}
+        with:
+          script: |
+            const violation = process.env.VIOLATION || "Merge flow violation (see the job log for details).";
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            const body = [
+              "## ⛔ Merge Flow Violation",
+              "",
+              violation,
+              "",
+              "---",
+              "> **Enforced flow:** `feature/*` → `pre-release-v*` → `release-v*` → `master`",
+              "> Please retarget this PR to the correct branch or close it."
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pull_number,
+              body
+            });
+
+            await github.rest.pulls.createReview({
+              owner,
+              repo,
+              pull_number,
+              event: "REQUEST_CHANGES",
+              body: "🚦 This PR violates the enforced merge flow. See the comment above for details."
+            });
+
+      - name: Dismiss stale bot reviews on success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.payload.pull_request.number;
+
+            const reviews = await github.rest.pulls.listReviews({ owner, repo, pull_number });
+
+            for (const review of reviews.data) {
+              if (review.user.login === "github-actions[bot]" && review.state === "CHANGES_REQUESTED") {
+                await github.rest.pulls.dismissReview({
+                  owner,
+                  repo,
+                  pull_number,
+                  review_id: review.id,
+                  message: "✅ Merge flow is now valid — review dismissed automatically."
+                });
+              }
+            }

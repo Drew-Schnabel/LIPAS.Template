@@ -1,0 +1,50 @@
+# Runs actionlint against every YAML in .github/ on any PR or push that
+# touches workflow files. Catches syntax + logic errors before merge.
+
+name: lint-workflows
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+  push:
+    branches:
+      - master
+      - 'release-v**'
+      - 'pre-release-v**'
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+
+permissions: {}
+
+concurrency:
+  group: lint-workflows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download actionlint
+        id: install
+        run: |
+          set -euo pipefail
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.7
+          echo "bin=$PWD/actionlint" >> "$GITHUB_OUTPUT"
+
+      - name: Run actionlint
+        run: |
+          set -euo pipefail
+          # Filter shellcheck info/style findings — only fail on warning+.
+          # SC2086 unquoted numeric exit codes and SC2012 ls-of-known-pattern
+          # filenames in our run-blocks are intentional, not bugs.
+          "${{ steps.install.outputs.bin }}" -color -shellcheck "shellcheck -S warning"
