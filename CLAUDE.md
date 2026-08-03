@@ -67,8 +67,20 @@ Bug fixes, behavior-neutral refactors, and one-off ops tasks do NOT warrant invo
   that requires.
 - **Reasoning belongs in the ADR or rule doc, never in a code comment.** Comments stay terse and
   code-related: no issue numbers, no provenance, no narrative about what was tried.
-- **Every inline comment on a PR gets a reply before that review is done.** Answering in chat is not
-  answering the review.
+
+### Pull request flow
+
+1. **On open** — the PR is assigned to the users in `.github/CODEOWNERS`. `assign-codeowners.yml`
+   does this; it reads CODEOWNERS from the base branch, never the PR head.
+2. **On changes requested** — `changes-requested.yml` applies `Changes Requested By Reviewer`,
+   assigns the author, and clears the reviewer from assignees and requested reviewers.
+3. **On the author pushing a fix** — `ready-for-re-review.yml` removes
+   `Changes Requested By Reviewer`, applies `Revised Pull Request`, and re-requests the reviewers
+   who asked for changes. The two labels are mutually exclusive: a PR is either awaiting the author
+   or awaiting the reviewer, never both.
+4. **Every inline comment gets a reply before that review is done.** Answering in chat is not
+   answering the review.
+
 - **A finding that needs re-confirmation goes on the GitHub issue** — comment, `SME Input Needed`
   label, assign the decider. A conclusion reached only in chat has not been recorded.
 - **Run a senior-engineer review before opening the PR**, and verify what it claims rather than
