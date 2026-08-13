@@ -48,7 +48,7 @@ jobs:
           gate() { echo "::notice::PO gate: $1"; echo "- PO gate: $1" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
           CMD=$(echo "$BODY" | head -1 | tr '[:upper:]' '[:lower:]' | xargs)
           case "$CMD" in "/approve"|"/reject"*) ;; *) gate "no command in first line: '$CMD'" ;; esac
-          tr -d '\r' < ProductOwners.md | grep -Eqix "@?${ACTOR}" || gate "@${ACTOR} not in ProductOwners.md"
+          tr -d '\r' < governance/ProductOwners.md | grep -Eqix "@?${ACTOR}" || gate "@${ACTOR} not in governance/ProductOwners.md"
           gh issue view "$ISSUE" --json labels -q '.labels[].name' \
             | grep -qxF 'Pending Product Owner Review' || gate "issue #${ISSUE} not in Pending state"
           if [ "$CMD" = "/approve" ]; then
