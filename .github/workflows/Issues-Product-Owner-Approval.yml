@@ -1,0 +1,43 @@
+name: PO decision
+on:
+  issue_comment:
+    types: [created]        # deliberately not 'edited'
+
+concurrency:
+  group: po-review-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    if: github.event.comment.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4          # default branch = the only ProductOwners.md that counts
+      - name: Evaluate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BODY: ${{ github.event.comment.body }}
+          ACTOR: ${{ github.event.comment.user.login }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          CMD=$(echo "$BODY" | head -1 | tr '[:upper:]' '[:lower:]' | xargs)
+          case "$CMD" in "/approve"|"/reject"*) ;; *) exit 0 ;; esac
+          grep -qix "@${ACTOR}" ProductOwners.md || exit 0
+          # live state, not the event snapshot
+          gh issue view "$ISSUE" --json labels -q '.labels[].name' \
+            | grep -qx 'Pending Product Owner Review' || exit 0
+          if [ "$CMD" = "/approve" ]; then
+            gh issue edit "$ISSUE" \
+              --remove-label 'Pending Product Owner Review' \
+              --add-label 'Product Owner Approved'
+            gh issue comment "$ISSUE" --body "✅ Approved by @${ACTOR}"
+          else
+            REASON=$(echo "$BODY" | sed 's|^/reject||I' | xargs)
+            gh issue edit "$ISSUE" \
+              --remove-label 'Pending Product Owner Review' \
+              --add-label 'Product Owner Rejected'
+            gh issue comment "$ISSUE" --body "❌ Rejected by @${ACTOR}<br>**Reason:** ${REASON:-none given}"
+          fi
