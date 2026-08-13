@@ -78,7 +78,7 @@ jobs:
 
       - name: Dismiss PR and post violation comment
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           # Passed via env, NOT interpolated into the script: the violation text contains backticks
           # (markdown code spans), which would terminate a JS template literal and crash the script
@@ -117,7 +117,7 @@ jobs:
 
       - name: Dismiss stale bot reviews on success
         if: success()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { owner, repo } = context.repo;
