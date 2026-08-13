@@ -30,7 +30,7 @@ jobs:
       issues: write
     steps:
       - name: Check out CODEOWNERS from the base branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           sparse-checkout: .github/CODEOWNERS
